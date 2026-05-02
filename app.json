@@ -6,30 +6,27 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
       "backgroundColor": "#0F172A"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.josi.letrasyacordes",
       "buildNumber": "1"
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0F172A"
-      },
       "package": "com.josi.letrasyacordes",
       "versionCode": 1
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
     "extra": {
-      "apiUrl": "https://accordes-app-backend.onrender.com/api/v1"
+      "apiUrl": "https://accordes-app-backend.onrender.com/api/v1",
+      "eas": {
+        "projectId": "5b577518-c93e-49a5-b4a7-8f068127f80c"
+      }
     },
-    "plugins": []
+    "plugins": [],
+    "owner": "josiasavram"
   }
 }
