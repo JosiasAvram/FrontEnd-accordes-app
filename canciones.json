@@ -1,0 +1,743 @@
+[
+  {
+    "title": "Queremos Darte Adoración",
+    "artist": "Isaac Salinas",
+    "artistSlug": "isaac-salinas",
+    "titleSlug": "queremos-darte-adoracion",
+    "genre": "adoracion",
+    "originalKey": "D",
+    "capo": 0,
+    "difficulty": "medio",
+    "sections": [
+      {
+        "type": "intro",
+        "label": "Intro",
+        "lines": [
+          {
+            "text": "",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 4 },
+              { "chord": "Bm", "position": 8 },
+              { "chord": "F#m", "position": 13 },
+              { "chord": "G", "position": 18 },
+              { "chord": "A", "position": 22 },
+              { "chord": "Bm", "position": 26 },
+              { "chord": "D", "position": 31 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "verso",
+        "label": "Estrofa 1",
+        "lines": [
+          {
+            "text": "Alineo mi vida y mi canción A tu corazón",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "D", "position": 41 }
+            ]
+          },
+          {
+            "text": "Guías mis pasos en tu dirección",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 32 }
+            ]
+          },
+          {
+            "text": "Me dejo llevar por ti Espíritu de Dios",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 24 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "verso",
+        "label": "Estrofa 2",
+        "lines": [
+          {
+            "text": "Quiero entregarte Lo que sueñas recibir",
+            "chords": [
+              { "chord": "D", "position": 0 },
+              { "chord": "G", "position": 32 },
+              { "chord": "D", "position": 74 }
+            ]
+          },
+          {
+            "text": "No esa a mí manera enséñame a adorar",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 34 }
+            ]
+          },
+          {
+            "text": "Me dejo llevar por ti Espíritu de Dios",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 24 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "interludio",
+        "label": "Interludio",
+        "lines": [
+          {
+            "text": "",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 4 },
+              { "chord": "Bm", "position": 8 },
+              { "chord": "F#m", "position": 13 },
+              { "chord": "G", "position": 18 },
+              { "chord": "A", "position": 22 },
+              { "chord": "Bm", "position": 26 },
+              { "chord": "D", "position": 31 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "estribillo",
+        "label": "Coro",
+        "lines": [
+          {
+            "text": "Queremos darte adoración",
+            "chords": [{ "chord": "G", "position": 0 }]
+          },
+          {
+            "text": "Que nace de tu Espíritu",
+            "chords": [{ "chord": "A", "position": 0 }]
+          },
+          {
+            "text": "Y vuelve a tu Espíritu",
+            "chords": [{ "chord": "Bm", "position": 0 }]
+          },
+          {
+            "text": "Señor",
+            "chords": [{ "chord": "F#m", "position": 0 }]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "puente",
+        "label": "Puente",
+        "lines": [
+          {
+            "text": "Tu eres Santo, Oh oh",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 16 }
+            ]
+          },
+          {
+            "text": "Tu eres Santo, Oh oh",
+            "chords": [
+              { "chord": "Bm", "position": 0 },
+              { "chord": "D", "position": 14 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      }
+    ],
+    "views": 0,
+    "status": "published",
+    "createdAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "__v": 0
+  },
+  {
+    "title": "La Sunamita",
+    "artist": "Monte Santo",
+    "artistSlug": "monte-santo",
+    "titleSlug": "la-sunamita",
+    "genre": "adoracion",
+    "originalKey": "E",
+    "capo": 0,
+    "difficulty": "medio",
+    "sections": [
+      {
+        "type": "intro",
+        "label": "Intro",
+        "lines": [
+          {
+            "text": "",
+            "chords": [
+              { "chord": "E", "position": 0 },
+              { "chord": "C#m", "position": 4 },
+              { "chord": "G#m", "position": 9 },
+              { "chord": "A", "position": 14 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "verso",
+        "label": "Estrofa",
+        "lines": [
+          {
+            "text": "Viniste a mi casa, Me visitaste",
+            "chords": [
+              { "chord": "E", "position": 0 },
+              { "chord": "A/C#", "position": 28 },
+              { "chord": "E/B", "position": 44 }
+            ]
+          },
+          {
+            "text": "Disfruté tu presencia, Me cautivaste",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "E/C#", "position": 26 }
+            ]
+          },
+          {
+            "text": "No quiero que te vayas",
+            "chords": [{ "chord": "A", "position": 0 }]
+          },
+          {
+            "text": "Yo quiero que te quedes",
+            "chords": [
+              { "chord": "E/G#", "position": 0 },
+              { "chord": "A/F#", "position": 18 }
+            ]
+          },
+          {
+            "text": "He preparado un aposento para ti",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "Bsus4", "position": 33 },
+              { "chord": "B", "position": 39 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "estribillo",
+        "label": "Coro",
+        "lines": [
+          {
+            "text": "Mi amado, Mi amado",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "A/F#", "position": 16 }
+            ]
+          },
+          {
+            "text": "Yo soy La Sunamita que te dice: Vive aquí",
+            "chords": [
+              { "chord": "E", "position": 0 },
+              { "chord": "Bsus4", "position": 41 },
+              { "chord": "B", "position": 47 }
+            ]
+          },
+          {
+            "text": "Mi amado, Mi amado",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "A/F#", "position": 16 }
+            ]
+          },
+          {
+            "text": "Todo lo que ves lo he preparado para ti...",
+            "chords": [
+              { "chord": "E", "position": 0 },
+              { "chord": "Bsus4", "position": 43 },
+              { "chord": "B", "position": 49 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "puente",
+        "label": "Puente",
+        "lines": [
+          {
+            "text": "",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "B", "position": 4 },
+              { "chord": "E/C#", "position": 8 },
+              { "chord": "B/G#", "position": 14 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "estribillo",
+        "label": "Estribillo",
+        "lines": [
+          {
+            "text": "No importa todo lo que cueste",
+            "chords": [{ "chord": "A", "position": 0 }]
+          },
+          {
+            "text": "Tu presencia vale mucho más",
+            "chords": [{ "chord": "B", "position": 0 }]
+          },
+          {
+            "text": "Solo quiero estar contigo",
+            "chords": [{ "chord": "E/C#", "position": 0 }]
+          },
+          {
+            "text": "Una y otra, y otra, y otra vez",
+            "chords": [{ "chord": "B/G#", "position": 0 }]
+          },
+          { "text": "", "chords": [] }
+        ]
+      }
+    ],
+    "views": 0,
+    "status": "published",
+    "createdAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "__v": 0
+  },
+  {
+    "title": "Me reconcilió",
+    "artist": "Isaac Salinas",
+    "artistSlug": "isaac-salinas",
+    "titleSlug": "me-reconcilio",
+    "genre": "adoracion",
+    "originalKey": "D",
+    "capo": 0,
+    "difficulty": "medio",
+    "sections": [
+      {
+        "type": "verso",
+        "label": "Estrofa",
+        "lines": [
+          {
+            "text": "En el silbido apacible me atraes",
+            "chords": [
+              { "chord": "D", "position": 0 },
+              { "chord": "A/C#", "position": 38 }
+            ]
+          },
+          {
+            "text": "De las cuevas oscuras me sacas",
+            "chords": [
+              { "chord": "Bm7", "position": 0 },
+              { "chord": "G", "position": 31 }
+            ]
+          },
+          {
+            "text": "Me sedujiste y me dejé seducir por ti",
+            "chords": [
+              { "chord": "D/F#", "position": 0 },
+              { "chord": "A/C#", "position": 15 },
+              { "chord": "Bm7", "position": 29 }
+            ]
+          },
+          {
+            "text": "Fue más fuerte tu amor",
+            "chords": [{ "chord": "G", "position": 0 }]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "estribillo",
+        "label": "Coro",
+        "lines": [
+          {
+            "text": "Me reconcilio con lo que tu dijiste de mi",
+            "chords": [{ "chord": "G", "position": 0 }]
+          },
+          {
+            "text": "Me reconcilio con tus sueños, con tus planes",
+            "chords": [{ "chord": "D/F#", "position": 0 }]
+          },
+          {
+            "text": "Me reconcilio con tu diseño original, Cristo",
+            "chords": [
+              { "chord": "G/B", "position": 0 },
+              { "chord": "A/C#", "position": 22 },
+              { "chord": "D", "position": 36 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "interludio",
+        "label": "Interludio",
+        "lines": [
+          {
+            "text": "",
+            "chords": [
+              { "chord": "Em7", "position": 0 },
+              { "chord": "D", "position": 4 },
+              { "chord": "G", "position": 8 },
+              { "chord": "A", "position": 12 },
+              { "chord": "Bm", "position": 16 },
+              { "chord": "D", "position": 20 },
+              { "chord": "Em", "position": 24 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "puente",
+        "label": "Puente",
+        "lines": [
+          {
+            "text": "Tu amor me venció, tu amor me absorbió",
+            "chords": [
+              { "chord": "D", "position": 0 },
+              { "chord": "A/C#", "position": 34 },
+              { "chord": "Bm7", "position": 60 }
+            ]
+          },
+          {
+            "text": "No tengo defensas contra ti, me rindo",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "D", "position": 36 }
+            ]
+          },
+          {
+            "text": "Tu amor me venció, tu amor me absorbió",
+            "chords": [
+              { "chord": "Bm7", "position": 0 },
+              { "chord": "A/C#", "position": 34 },
+              { "chord": "D/F#", "position": 60 }
+            ]
+          },
+          {
+            "text": "No tengo defensas contra ti, me rindo",
+            "chords": [
+              { "chord": "Em7", "position": 0 },
+              { "chord": "Bm7", "position": 36 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      }
+    ],
+    "views": 0,
+    "status": "published",
+    "createdAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "__v": 0
+  },
+  {
+    "title": "Si te tengo a ti",
+    "artist": "Marcos Brunet",
+    "artistSlug": "marcos-brunet",
+    "titleSlug": "si-te-tengo-a-ti",
+    "genre": "adoracion",
+    "originalKey": "D",
+    "capo": 0,
+    "difficulty": "medio",
+    "sections": [
+      {
+        "type": "verso",
+        "label": "Estrofa",
+        "lines": [
+          {
+            "text": "Cristo Jesús eres mi plenitud",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 21 },
+              { "chord": "Bm7", "position": 27 },
+              { "chord": "F#m7", "position": 34 }
+            ]
+          },
+          {
+            "text": "Cristo Jesús eres mi plenitud",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "Em7", "position": 13 },
+              { "chord": "D", "position": 24 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "estribillo",
+        "label": "Coro",
+        "lines": [
+          {
+            "text": "Si te tengo a ti lo tengo todo mi amado mi tesoro,",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "A", "position": 33 },
+              { "chord": "Bm7", "position": 39 },
+              { "chord": "F#m7", "position": 46 }
+            ]
+          },
+          {
+            "text": "Fuera de ti nada deseo Señor",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "Em7", "position": 18 },
+              { "chord": "D", "position": 25 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      }
+    ],
+    "views": 0,
+    "status": "published",
+    "createdAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "__v": 0
+  },
+  {
+    "title": "Soy tu hijo",
+    "artist": "Jan Earle",
+    "artistSlug": "jan-earle",
+    "titleSlug": "soy-tu-hijo",
+    "genre": "adoracion",
+    "originalKey": "C",
+    "capo": 0,
+    "difficulty": "medio",
+    "sections": [
+      {
+        "type": "verso",
+        "label": "Estrofa",
+        "lines": [
+          {
+            "text": "En Ti encontré esperanza",
+            "chords": [
+              { "chord": "F", "position": 0 },
+              { "chord": "C/E", "position": 30 }
+            ]
+          },
+          {
+            "text": "Y el valor que Tu cruz me regaló",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "Am7", "position": 36 }
+            ]
+          },
+          {
+            "text": "Mi roca y mi fortaleza",
+            "chords": [
+              { "chord": "F", "position": 0 },
+              { "chord": "C/E", "position": 27 }
+            ]
+          },
+          {
+            "text": "Solo Tu voz me da guía y dirección",
+            "chords": [
+              { "chord": "G", "position": 0 },
+              { "chord": "Am7", "position": 39 }
+            ]
+          },
+          {
+            "text": "No hay nadie como Tú",
+            "chords": [
+              { "chord": "Dm7", "position": 0 },
+              { "chord": "C/E", "position": 11 },
+              { "chord": "G", "position": 17 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "estribillo",
+        "label": "Coro",
+        "lines": [
+          {
+            "text": "Soy tu hijo, Abba Padre",
+            "chords": [{ "chord": "C", "position": 0 }]
+          },
+          {
+            "text": "Tu eres suficiente, para mí",
+            "chords": [{ "chord": "G/B", "position": 0 }]
+          },
+          {
+            "text": "Camino de Tu mano y confío en Ti",
+            "chords": [
+              { "chord": "F", "position": 0 },
+              { "chord": "C/E", "position": 33 }
+            ]
+          },
+          {
+            "text": "Tu eres mi principio y mi fin",
+            "chords": [
+              { "chord": "Dm7", "position": 0 },
+              { "chord": "E/C", "position": 18 },
+              { "chord": "G", "position": 25 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "puente",
+        "label": "Puente",
+        "lines": [
+          {
+            "text": "Eres mi fuente, eres mi herencia",
+            "chords": [
+              { "chord": "Am7", "position": 0 },
+              { "chord": "Em7", "position": 23 }
+            ]
+          },
+          {
+            "text": "Yo corro a tus brazos tu amor no fallará",
+            "chords": [
+              { "chord": "F", "position": 0 },
+              { "chord": "C", "position": 29 },
+              { "chord": "G", "position": 34 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      }
+    ],
+    "views": 0,
+    "status": "published",
+    "createdAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "__v": 0
+  },
+  {
+    "title": "La tribu de los entendidos",
+    "artist": "Misión CEM",
+    "artistSlug": "mision-cem",
+    "titleSlug": "la-tribu-de-los-entendidos",
+    "genre": "adoracion",
+    "originalKey": "C#m",
+    "capo": 0,
+    "difficulty": "medio",
+    "sections": [
+      {
+        "type": "verso",
+        "label": "Estrofa",
+        "lines": [
+          {
+            "text": "Se escucha la voz del espíritu de Dios despertando un ejercito",
+            "chords": [
+              { "chord": "C#m", "position": 0 },
+              { "chord": "A", "position": 67 },
+              { "chord": "F#m", "position": 84 }
+            ]
+          },
+          {
+            "text": "Los entendidos en los tiempos que, los que buscan más de su gloria, resplandecerán",
+            "chords": [
+              { "chord": "C#m", "position": 0 },
+              { "chord": "A", "position": 101 },
+              { "chord": "F#m", "position": 118 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "pre_coro",
+        "label": "Pre-Coro",
+        "lines": [
+          {
+            "text": "Como el firmamento, como las estrellas brillaran por la eternidad",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "B", "position": 26 },
+              { "chord": "A", "position": 30 },
+              { "chord": "B", "position": 44 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "estribillo",
+        "label": "Coro",
+        "lines": [
+          {
+            "text": "Se levanta la tribu de los entendidos",
+            "chords": [{ "chord": "C#m", "position": 0 }]
+          },
+          {
+            "text": "Los que avanzan sin temor a lo que vendrá",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "F#m", "position": 36 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      },
+      {
+        "type": "puente",
+        "label": "Puente",
+        "lines": [
+          {
+            "text": "Profeticen hijos del Dios viviente",
+            "chords": [{ "chord": "C#m", "position": 0 }]
+          },
+          {
+            "text": "Intercedan como llamas ardientes",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "F#m", "position": 35 }
+            ]
+          },
+          {
+            "text": "Clamen como antorchas encendidas",
+            "chords": [{ "chord": "C#m", "position": 0 }]
+          },
+          {
+            "text": "Con sabiduría guiaremos las naciones",
+            "chords": [
+              { "chord": "A", "position": 0 },
+              { "chord": "F#m", "position": 40 }
+            ]
+          },
+          { "text": "", "chords": [] }
+        ]
+      }
+    ],
+    "views": 0,
+    "status": "published",
+    "createdAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "updatedAt": {
+      "$date": "2026-05-02T00:00:00.000Z"
+    },
+    "__v": 0
+  }
+]
