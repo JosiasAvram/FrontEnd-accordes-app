@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "342071533676",
+    "project_id": "acordes-app-5ffe1",
+    "storage_bucket": "acordes-app-5ffe1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:342071533676:android:3f853297bd4db8b0c2f849",
+        "android_client_info": {
+          "package_name": "com.josi.letrasyacordes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA1bEg5lnZaZw_ZGufJ4BnK8DUFVQ-vabg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

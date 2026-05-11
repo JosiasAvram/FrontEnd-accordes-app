@@ -14,3 +14,6 @@ web-build/
 ios/
 android/
 .DS_Store
+
+# Firebase Service Account Key (sensible! NO commitear)
+*firebase-adminsdk*.json
