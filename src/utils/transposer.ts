@@ -71,6 +71,13 @@ export function transposeSong(song: Song, semitones: number): Song {
           ...c,
           chord: transposeChord(c.chord, semitones, useFlats),
         })),
+        inlineSegments: line.inlineSegments
+          ? line.inlineSegments.map((seg) =>
+              seg.type === 'chord'
+                ? { ...seg, content: transposeChord(seg.content, semitones, useFlats) }
+                : seg,
+            )
+          : line.inlineSegments,
       })),
     })),
   };

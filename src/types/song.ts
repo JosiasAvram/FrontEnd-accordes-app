@@ -3,9 +3,20 @@ export interface ChordPosition {
   position: number;
 }
 
+export interface InlineSegment {
+  type: 'text' | 'chord';
+  content: string;
+}
+
 export interface SongLine {
   text: string;
   chords: ChordPosition[];
+  /**
+   * Si esta presente, la linea es de solo acordes con anotaciones intercaladas
+   * (ej: "A -> segunda vuelta A/C#"). Cada segmento alterna texto y acordes.
+   * Si esta ausente, la linea es chord+letra estandar.
+   */
+  inlineSegments?: InlineSegment[];
 }
 
 export interface SongSection {
@@ -27,6 +38,7 @@ export interface Song {
   sections: SongSection[];
   views: number;
   status: 'draft' | 'published';
+  inList?: boolean;
   createdAt: string;
   updatedAt: string;
 }

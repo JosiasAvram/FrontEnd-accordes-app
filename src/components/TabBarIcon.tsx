@@ -16,6 +16,7 @@ export function TabBarIcon({
   const emoji =
     name === 'Canciones' ? '🎵' :
     name === 'Acordes' ? '🎸' :
+    name === 'Crear' ? '➕' :
     name === 'Ajustes' ? '⚙️' : '•';
 
   return (

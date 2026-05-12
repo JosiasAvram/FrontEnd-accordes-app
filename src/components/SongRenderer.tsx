@@ -1,4 +1,4 @@
-import { Text, View, StyleSheet, Pressable } from 'react-native';
+import { Platform, Text, View, StyleSheet } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { Song, SongLine, SongSection } from '../types/song';
 
@@ -8,21 +8,22 @@ interface Props {
   onChordPress?: (chord: string) => void;
 }
 
+// Fuente monoespaciada — usar "Courier" en iOS y "monospace" en Android.
+// Esto garantiza que cada caracter tenga el MISMO ancho, igual que en el editor,
+// para que la línea de acordes quede alineada perfectamente con la letra de abajo.
+const MONO_FONT = Platform.OS === 'ios' ? 'Courier' : 'monospace';
+
 /**
- * SongRenderer — el corazón visual de la app.
+ * SongRenderer — renderiza una canción con acordes alineados sobre la letra.
  *
- * Renderiza letra+acordes con tipografía monoespaciada para mantener la
- * alineación EXACTA. Por cada línea: primero una sub-línea con los acordes
- * en sus posiciones, después la sub-línea con la letra. El truco es que
- * tanto la letra como los acordes usan el mismo ancho de caracter (mono),
- * así "abrir" un espacio del tamaño correcto antes de cada acorde alinea
- * todo perfectamente.
+ * La estrategia es: usar la MISMA fuente monoespaciada en la línea de acordes
+ * y en la línea de letra, y posicionar los acordes con espacios literales.
+ * De esta forma, la columna N de la línea de acordes coincide EXACTAMENTE con
+ * la columna N de la línea de letra (mismo ancho de caracter).
  *
- * Cada acorde es tappeable: dispara onChordPress(chord) para abrir el modal
- * con el diagrama.
+ * Cada acorde es tappeable: dispara onChordPress(chord) para abrir el modal.
  */
 export function SongRenderer({ song, fontSize = 14, onChordPress }: Props) {
-  const theme = useTheme();
   const lineHeight = fontSize * 1.5;
 
   return (
@@ -52,7 +53,6 @@ function SectionView({
   onChordPress?: (chord: string) => void;
 }) {
   const theme = useTheme();
-
   const label = section.label ?? capitalize(section.type);
 
   return (
@@ -86,30 +86,97 @@ function LineView({
 }) {
   const theme = useTheme();
 
-  // Si la línea está vacía, espacio en blanco
-  if (line.text === '' && line.chords.length === 0) {
+  // Línea totalmente vacía → espaciado en blanco
+  const hasInline = line.inlineSegments && line.inlineSegments.length > 0;
+  if (
+    !hasInline &&
+    line.text === '' &&
+    (!line.chords || line.chords.length === 0)
+  ) {
     return <View style={{ height: lineHeight }} />;
   }
 
-  // Construir la línea de acordes con espacios para alinear posiciones
-  // Estrategia: recorrer los acordes ordenados por posición, llenar con
-  // espacios hasta llegar a la columna correcta y luego escribir el acorde.
-  const sortedChords = [...line.chords].sort((a, b) => a.position - b.position);
+  // CASO 1 — Linea con segmentos inline (acordes mezclados con texto/anotaciones).
+  // Ej: "A -> segunda vuelta A/C#"
+  // Renderizamos un solo Text con cada segmento: text plano + acordes tappeables.
+  if (hasInline) {
+    return (
+      <View>
+        <Text
+          style={{
+            fontFamily: MONO_FONT,
+            fontSize,
+            lineHeight,
+            color: theme.colors.textPrimary,
+          }}
+        >
+          {line.inlineSegments!.map((seg, idx) =>
+            seg.type === 'chord' ? (
+              <Text
+                key={`is-${idx}-${seg.content}`}
+                onPress={onChordPress ? () => onChordPress(seg.content) : undefined}
+                style={{ color: theme.colors.primary, fontWeight: 'bold' }}
+              >
+                {seg.content}
+              </Text>
+            ) : (
+              <Text key={`is-${idx}`}>{seg.content}</Text>
+            ),
+          )}
+        </Text>
+      </View>
+    );
+  }
+
+  // CASO 2 — Linea estandar: acordes posicionados ARRIBA + letra debajo.
+  const sortedChords = [...(line.chords ?? [])].sort((a, b) => a.position - b.position);
+
+  type Segment = { type: 'space' | 'chord'; text: string; key: string };
+  const segments: Segment[] = [];
+  let cursor = 0;
+  for (let i = 0; i < sortedChords.length; i++) {
+    const c = sortedChords[i];
+    let padding = c.position - cursor;
+    if (padding < 1 && cursor > 0) padding = 1;
+    if (padding > 0) {
+      segments.push({ type: 'space', text: ' '.repeat(padding), key: `s-${i}` });
+    }
+    segments.push({ type: 'chord', text: c.chord, key: `c-${i}-${c.chord}` });
+    cursor = cursor + (padding > 0 ? padding : 0) + c.chord.length;
+  }
 
   return (
-    <View style={{ minHeight: line.chords.length > 0 ? lineHeight * 2 : lineHeight }}>
-      {/* Línea de acordes (solo si hay acordes en esta línea) */}
+    <View>
       {sortedChords.length > 0 && (
-        <View style={{ flexDirection: 'row', height: lineHeight }}>
-          {renderChordLine(sortedChords, fontSize, theme.colors.primary, onChordPress)}
-        </View>
+        <Text
+          style={{
+            fontFamily: MONO_FONT,
+            fontSize,
+            lineHeight,
+            fontWeight: 'bold',
+            color: theme.colors.primary,
+          }}
+        >
+          {segments.map((seg) =>
+            seg.type === 'chord' ? (
+              <Text
+                key={seg.key}
+                onPress={onChordPress ? () => onChordPress(seg.text) : undefined}
+                style={{ color: theme.colors.primary }}
+              >
+                {seg.text}
+              </Text>
+            ) : (
+              <Text key={seg.key}>{seg.text}</Text>
+            ),
+          )}
+        </Text>
       )}
 
-      {/* Línea de letra */}
       {line.text !== '' && (
         <Text
           style={{
-            fontFamily: 'Courier',
+            fontFamily: MONO_FONT,
             fontSize,
             lineHeight,
             color: theme.colors.textPrimary,
@@ -120,46 +187,6 @@ function LineView({
       )}
     </View>
   );
-}
-
-/**
- * Construye los segmentos de la línea de acordes con padding-left
- * proporcional al ancho de caracter monoespaciado.
- */
-function renderChordLine(
-  chords: Array<{ chord: string; position: number }>,
-  fontSize: number,
-  color: string,
-  onPress?: (chord: string) => void,
-) {
-  // Ancho aproximado de un caracter en Courier a `fontSize`.
-  // Empíricamente, Courier es ~0.6 * fontSize de ancho.
-  const charWidth = fontSize * 0.6;
-  let cursor = 0;
-
-  return chords.map((c, idx) => {
-    const leftPad = (c.position - cursor) * charWidth;
-    cursor = c.position + c.chord.length;
-    return (
-      <Pressable
-        key={`${idx}-${c.chord}`}
-        onPress={() => onPress?.(c.chord)}
-        style={{ marginLeft: Math.max(0, leftPad) }}
-        hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-      >
-        <Text
-          style={{
-            fontFamily: 'Courier',
-            fontSize,
-            fontWeight: 'bold',
-            color,
-          }}
-        >
-          {c.chord}
-        </Text>
-      </Pressable>
-    );
-  });
 }
 
 function capitalize(s: string) {

@@ -2,11 +2,14 @@
   "expo": {
     "name": "Letras y Acordes",
     "slug": "letras-y-acordes",
-    "version": "0.1.0",
+    "version": "4.5.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/icon.png",
     "splash": {
-      "backgroundColor": "#0F172A"
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF3E0"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -14,11 +17,17 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.josi.letrasyacordes",
-      "buildNumber": "1"
+      "buildNumber": "9"
     },
     "android": {
       "package": "com.josi.letrasyacordes",
-      "versionCode": 1
+      "versionCode": 9,
+      "softwareKeyboardLayoutMode": "pan",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#FAF3E0"
+      }
     },
     "extra": {
       "apiUrl": "https://accordes-app-backend.onrender.com/api/v1",
@@ -26,7 +35,15 @@
         "projectId": "5b577518-c93e-49a5-b4a7-8f068127f80c"
       }
     },
-    "plugins": [],
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#F59E0B",
+          "defaultChannel": "default"
+        }
+      ]
+    ],
     "owner": "josiasavram"
   }
 }

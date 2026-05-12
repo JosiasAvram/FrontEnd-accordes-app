@@ -1,132 +1,627 @@
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { SearchBar } from '../components/SearchBar';
 import { useTheme } from '../theme/ThemeProvider';
 import { songsApi } from '../services/songs.api';
+import { useToggleList } from '../hooks/useSongList';
+import {
+  useListState,
+  shouldShowNotifyButton,
+  useDismissNotification,
+  useSendNotification,
+} from '../hooks/useListState';
+import { NewBadge } from '../components/NewBadge';
 import { SongsStackParamList } from '../navigation/RootNavigator';
+import { SongSummary } from '../types/song';
 
 type Props = NativeStackScreenProps<SongsStackParamList, 'Home'>;
 
+type SortOption = 'title' | 'artist' | 'list';
+
+interface ArtistGroup {
+  artist: string;
+  count: number;
+}
+
+/**
+ * Hook simple de debounce — espera N ms desde el último cambio del valor
+ * antes de devolver el valor "estable". Sirve para no spamear al backend
+ * con cada tecla que escribe el usuario.
+ */
+function useDebounce<T>(value: T, delay = 300): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
+
 export function HomeScreen({ navigation }: Props) {
   const theme = useTheme();
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<SortOption>('title');
+  // Cuando estamos en modo "artist" y el usuario elige un artista,
+  // pasamos a mostrar solo sus canciones. Null = lista de artistas.
+  const [selectedArtist, setSelectedArtist] = useState<string | null>(null);
+  const debouncedQuery = useDebounce(query, 300);
 
-  const { data: popular } = useQuery({
-    queryKey: ['popular-songs'],
-    queryFn: () => songsApi.list({ limit: 10 }),
+  // Cambiar de modo o buscar resetea el artista seleccionado
+  useEffect(() => {
+    setSelectedArtist(null);
+  }, [sort, debouncedQuery]);
+
+  const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
+    queryKey: ['songs-list', debouncedQuery, sort],
+    queryFn: async () => {
+      // Si hay query, usa el endpoint de búsqueda; si no, lista todas
+      if (debouncedQuery.trim()) {
+        return songsApi.search({ q: debouncedQuery, limit: 200 });
+      }
+      return songsApi.list({ limit: 200 });
+    },
+    retry: 2,
   });
 
-  const { data: genres } = useQuery({
-    queryKey: ['genres'],
-    queryFn: () => songsApi.genres(),
-  });
+  // Ordenamiento + filtrado client-side
+  const sortedSongs = useMemo(() => {
+    if (!data?.data) return [];
+    let arr = [...data.data];
 
-  const goToSearch = (query: string) => {
-    navigation.navigate('SearchResults', { query });
+    if (sort === 'list') {
+      arr = arr.filter((s) => s.inList);
+      arr.sort((a, b) =>
+        a.title.localeCompare(b.title, 'es', { sensitivity: 'base' }),
+      );
+    } else if (sort === 'artist' && selectedArtist) {
+      // Mostrar solo las canciones del artista seleccionado, ordenadas A-Z
+      arr = arr.filter((s) => s.artist === selectedArtist);
+      arr.sort((a, b) =>
+        a.title.localeCompare(b.title, 'es', { sensitivity: 'base' }),
+      );
+    } else if (sort === 'title') {
+      arr.sort((a, b) =>
+        a.title.localeCompare(b.title, 'es', { sensitivity: 'base' }),
+      );
+    }
+    return arr;
+  }, [data, sort, selectedArtist]);
+
+  // Lista de artistas con su contador de canciones (solo se computa en modo artist sin artista seleccionado)
+  const artistGroups = useMemo<ArtistGroup[]>(() => {
+    if (!data?.data || sort !== 'artist' || selectedArtist) return [];
+    const counts = new Map<string, number>();
+    for (const song of data.data) {
+      counts.set(song.artist, (counts.get(song.artist) ?? 0) + 1);
+    }
+    const groups: ArtistGroup[] = Array.from(counts.entries()).map(
+      ([artist, count]) => ({ artist, count }),
+    );
+    groups.sort((a, b) =>
+      a.artist.localeCompare(b.artist, 'es', { sensitivity: 'base' }),
+    );
+    return groups;
+  }, [data, sort, selectedArtist]);
+
+  const sortOptions: Array<{ key: SortOption; label: string }> = [
+    { key: 'title', label: 'A-Z' },
+    { key: 'artist', label: 'Artista' },
+    { key: 'list', label: '★ Lista' },
+  ];
+
+  // Decidir si mostramos lista de artistas o de canciones
+  const showArtistList = sort === 'artist' && !selectedArtist;
+
+  // ── Notificaciones (solo en modo Lista) ───────────────
+  const { data: listState } = useListState();
+  const dismissMutation = useDismissNotification();
+  const sendMutation = useSendNotification();
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageText, setMessageText] = useState('');
+
+  // Cantidad real de canciones en la lista (independiente del filtro actual)
+  const inListCount = useMemo(
+    () => (data?.data ?? []).filter((s) => s.inList).length,
+    [data],
+  );
+
+  const notifyButtonVisible =
+    sort === 'list' &&
+    inListCount > 0 &&
+    shouldShowNotifyButton(listState);
+
+  const handleNotifyPress = () => {
+    Alert.alert(
+      'Notificar a todos',
+      '¿Estás seguro? Esto va a mandar una notificación push a todos los dispositivos con la app.',
+      [
+        {
+          text: 'No',
+          style: 'destructive',
+          onPress: () => dismissMutation.mutate(),
+        },
+        {
+          text: 'Sí',
+          onPress: () => {
+            setMessageText('');
+            setShowMessageModal(true);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleSendMessage = () => {
+    const trimmed = messageText.trim();
+    if (!trimmed) {
+      Alert.alert('Falta el mensaje', 'Escribí un texto para la notificación.');
+      return;
+    }
+    sendMutation.mutate(trimmed, {
+      onSuccess: () => {
+        setShowMessageModal(false);
+        setMessageText('');
+        Alert.alert('✓ Enviado', 'Notificación enviada a todos los dispositivos.');
+      },
+      onError: () => {
+        Alert.alert('Error', 'No se pudo enviar la notificación. Intentá de nuevo.');
+      },
+    });
   };
 
   return (
     <SafeAreaView edges={['top']} style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-      <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.header}>
         <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
           Letras y Acordes
         </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textSecondary }]}>
-          Buscá tu canción favorita
-        </Text>
 
-        <View style={styles.searchWrap}>
-          <SearchBar onSubmit={goToSearch} />
-        </View>
-
-        {/* Géneros */}
-        {!!genres?.length && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Géneros</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {genres.map((g) => (
-                <Pressable
-                  key={g.genre}
-                  onPress={() => goToSearch(g.genre)}
-                  style={[styles.chip, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-                >
-                  <Text style={[styles.chipText, { color: theme.colors.textPrimary }]}>{g.genre}</Text>
-                  <Text style={[styles.chipCount, { color: theme.colors.textMuted }]}>
-                    {g.count}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Populares */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Populares</Text>
-          {popular?.data.length ? (
-            popular.data.map((song) => (
-              <Pressable
-                key={song._id}
-                style={[styles.songRow, { borderBottomColor: theme.colors.border }]}
-                onPress={() => navigation.navigate('SongDetail', { songId: song._id, title: song.title })}
-              >
-                <View style={styles.songInfo}>
-                  <Text style={[styles.songTitle, { color: theme.colors.textPrimary }]}>
-                    {song.title}
-                  </Text>
-                  <Text style={[styles.songArtist, { color: theme.colors.textSecondary }]}>
-                    {song.artist}
-                  </Text>
-                </View>
-                <View style={[styles.keyBadge, { backgroundColor: theme.colors.surfaceAlt }]}>
-                  <Text style={[styles.keyText, { color: theme.colors.primary }]}>
-                    {song.originalKey}
-                  </Text>
-                </View>
-              </Pressable>
-            ))
-          ) : (
-            <Text style={[styles.empty, { color: theme.colors.textMuted }]}>
-              Todavía no hay canciones cargadas. Ingresá como admin para agregar.
-            </Text>
+        {/* Búsqueda live (con debounce de 300ms) */}
+        <View style={[styles.searchWrap, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+          <Text style={[styles.searchIcon, { color: theme.colors.textMuted }]}>🔍</Text>
+          <TextInput
+            style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+            placeholder="Buscar artista o canción..."
+            placeholderTextColor={theme.colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')}>
+              <Text style={[styles.searchClear, { color: theme.colors.textMuted }]}>✕</Text>
+            </Pressable>
           )}
         </View>
-      </ScrollView>
+
+        {/* Botones de orden + contador */}
+        <View style={styles.sortRow}>
+          {sortOptions.map((s) => (
+            <Pressable
+              key={s.key}
+              onPress={() => setSort(s.key)}
+              style={[
+                styles.sortChip,
+                {
+                  backgroundColor:
+                    sort === s.key ? theme.colors.primary : theme.colors.surface,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: sort === s.key ? '#000' : theme.colors.textPrimary,
+                  fontWeight: '600',
+                  fontSize: 13,
+                }}
+              >
+                {s.label}
+              </Text>
+            </Pressable>
+          ))}
+          <View style={{ flex: 1 }} />
+          <Text style={[styles.count, { color: theme.colors.textMuted }]}>
+            {showArtistList
+              ? `${artistGroups.length} ${artistGroups.length === 1 ? 'artista' : 'artistas'}`
+              : `${sortedSongs.length} ${sortedSongs.length === 1 ? 'canción' : 'canciones'}`}
+          </Text>
+        </View>
+
+        {/* Breadcrumb cuando estás viendo las canciones de un artista */}
+        {sort === 'artist' && selectedArtist && (
+          <Pressable
+            onPress={() => setSelectedArtist(null)}
+            style={[styles.backRow, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+          >
+            <Text style={[styles.backArrow, { color: theme.colors.primary }]}>‹</Text>
+            <Text style={[styles.backText, { color: theme.colors.textPrimary }]}>
+              Volver a artistas
+            </Text>
+            <View style={{ flex: 1 }} />
+            <Text style={[styles.backArtist, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+              {selectedArtist}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator color={theme.colors.primary} />
+          <Text style={[styles.loadingText, { color: theme.colors.textMuted }]}>
+            Cargando... (la primera vez puede tardar 30-60s)
+          </Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.center}>
+          <Text style={[styles.errorTitle, { color: theme.colors.danger }]}>
+            ⚠️ No se pudo conectar
+          </Text>
+          <Text style={[styles.errorMsg, { color: theme.colors.textSecondary }]}>
+            {(error as Error)?.message ?? 'Error desconocido'}
+          </Text>
+          <Pressable
+            onPress={() => refetch()}
+            style={[styles.retryBtn, { backgroundColor: theme.colors.primary }]}
+          >
+            <Text style={{ color: '#000', fontWeight: '600' }}>Reintentar</Text>
+          </Pressable>
+        </View>
+      ) : showArtistList ? (
+        // Modo "Artista" sin artista seleccionado → lista de artistas
+        <FlatList
+          data={artistGroups}
+          keyExtractor={(g) => g.artist}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Text style={[styles.empty, { color: theme.colors.textMuted }]}>
+                No hay artistas cargados todavía.
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => setSelectedArtist(item.artist)}
+              style={[styles.row, { borderBottomColor: theme.colors.border }]}
+            >
+              <View style={styles.rowInfo}>
+                <Text style={[styles.songTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+                  {item.artist}
+                </Text>
+                <Text style={[styles.songArtist, { color: theme.colors.textSecondary }]}>
+                  {item.count} {item.count === 1 ? 'canción' : 'canciones'}
+                </Text>
+              </View>
+              <Text style={[styles.chevron, { color: theme.colors.textMuted }]}>›</Text>
+            </Pressable>
+          )}
+        />
+      ) : (
+        // Lista de canciones (modo A-Z, Lista o Artista con artista seleccionado)
+        <FlatList
+          data={sortedSongs}
+          keyExtractor={(s) => s._id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Text style={[styles.empty, { color: theme.colors.textMuted }]}>
+                {sort === 'list'
+                  ? 'Aún no agregaste canciones a tu lista.\nTocá la ★ en cualquier canción para agregarla.'
+                  : debouncedQuery
+                  ? `No se encontraron resultados para "${debouncedQuery}"`
+                  : 'No hay canciones cargadas todavía.'}
+              </Text>
+            </View>
+          }
+          ListHeaderComponent={
+            isFetching && !isLoading ? (
+              <View style={styles.fetchingBar}>
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              </View>
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <SongRow
+              song={item}
+              onPress={() =>
+                navigation.navigate('SongDetail', {
+                  songId: item._id,
+                  title: item.title,
+                })
+              }
+            />
+          )}
+        />
+      )}
+
+      {/* Boton "Notificar" — fijo abajo, solo en modo Lista con cambios pendientes */}
+      {notifyButtonVisible && (
+        <View style={styles.notifyBar}>
+          <Pressable
+            onPress={handleNotifyPress}
+            disabled={dismissMutation.isPending || sendMutation.isPending}
+            style={[
+              styles.notifyBtn,
+              {
+                backgroundColor: theme.colors.primary,
+                opacity:
+                  dismissMutation.isPending || sendMutation.isPending ? 0.5 : 1,
+              },
+            ]}
+          >
+            <Text style={styles.notifyBtnText}>🔔 Notificar a todos</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Modal con TextInput para el mensaje de la notificacion */}
+      <Modal
+        visible={showMessageModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMessageModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalBackdrop}
+        >
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.textPrimary }]}>
+              Mensaje de la notificación
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: theme.colors.textSecondary }]}>
+              Título: "Lista actualizada"
+            </Text>
+            <TextInput
+              style={[
+                styles.modalInput,
+                {
+                  backgroundColor: theme.colors.background,
+                  color: theme.colors.textPrimary,
+                  borderColor: theme.colors.border,
+                },
+              ]}
+              value={messageText}
+              onChangeText={setMessageText}
+              placeholder="Ej: Repertorio del domingo cargado"
+              placeholderTextColor={theme.colors.textMuted}
+              maxLength={50}
+              multiline
+              autoFocus
+            />
+            <Text style={[styles.modalCounter, { color: theme.colors.textMuted }]}>
+              {messageText.length} / 50
+            </Text>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={() => {
+                  setShowMessageModal(false);
+                  setMessageText('');
+                }}
+                style={[styles.modalBtn, { backgroundColor: theme.colors.surfaceAlt }]}
+              >
+                <Text style={{ color: theme.colors.textPrimary, fontWeight: '600' }}>
+                  Cancelar
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSendMessage}
+                disabled={sendMutation.isPending || !messageText.trim()}
+                style={[
+                  styles.modalBtn,
+                  {
+                    backgroundColor: messageText.trim()
+                      ? theme.colors.primary
+                      : theme.colors.surfaceAlt,
+                    opacity: sendMutation.isPending ? 0.5 : 1,
+                  },
+                ]}
+              >
+                {sendMutation.isPending ? (
+                  <ActivityIndicator color="#000" />
+                ) : (
+                  <Text
+                    style={{
+                      color: messageText.trim() ? '#000' : theme.colors.textMuted,
+                      fontWeight: '600',
+                    }}
+                  >
+                    Enviar
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
+  );
+}
+
+function SongRow({ song, onPress }: { song: SongSummary; onPress: () => void }) {
+  const theme = useTheme();
+  const toggleList = useToggleList();
+  const inList = !!song.inList;
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.row, { borderBottomColor: theme.colors.border }]}
+    >
+      <View style={styles.rowInfo}>
+        <View style={styles.titleRow}>
+          <Text style={[styles.songTitle, { color: theme.colors.textPrimary }]} numberOfLines={1}>
+            {song.title}
+          </Text>
+          <NewBadge createdAt={song.createdAt} />
+        </View>
+        <Text style={[styles.songArtist, { color: theme.colors.textSecondary }]} numberOfLines={1}>
+          {song.artist}
+        </Text>
+      </View>
+
+      {/* Estrella tappeable para agregar/quitar de la lista (sin abrir el detalle) */}
+      <Pressable
+        onPress={(e) => {
+          e.stopPropagation();
+          toggleList.mutate(song._id);
+        }}
+        hitSlop={10}
+        style={styles.starBtn}
+      >
+        <Text
+          style={[
+            styles.starIcon,
+            { color: inList ? theme.colors.primary : theme.colors.textMuted },
+          ]}
+        >
+          {inList ? '★' : '☆'}
+        </Text>
+      </Pressable>
+
+      <View style={[styles.keyBadge, { backgroundColor: theme.colors.surfaceAlt }]}>
+        <Text style={[styles.keyText, { color: theme.colors.primary }]}>
+          {song.originalKey}
+        </Text>
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: { padding: 16, paddingBottom: 32 },
-  title: { fontSize: 28, fontWeight: 'bold', marginTop: 8 },
-  subtitle: { fontSize: 14, marginTop: 4, marginBottom: 20 },
-  searchWrap: { marginBottom: 24 },
-  section: { marginTop: 8, marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', marginBottom: 12 },
-  chip: {
+  header: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
+  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 12 },
+  searchWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: 16,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
+    height: 48,
+    marginBottom: 12,
   },
-  chipText: { fontSize: 14, marginRight: 6 },
-  chipCount: { fontSize: 12 },
-  songRow: {
+  searchIcon: { fontSize: 16, marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 16 },
+  searchClear: { fontSize: 16, padding: 4 },
+  sortRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    gap: 6,
+    marginBottom: 8,
+  },
+  sortChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  count: { fontSize: 12 },
+  listContent: { paddingBottom: 32 },
+  fetchingBar: { paddingVertical: 8, alignItems: 'center' },
+  center: { padding: 24, alignItems: 'center' },
+  empty: { fontSize: 14, fontStyle: 'italic', textAlign: 'center' },
+  loadingText: { fontSize: 13, marginTop: 12, textAlign: 'center' },
+  errorTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 8 },
+  errorMsg: { fontSize: 13, textAlign: 'center', marginBottom: 16 },
+  retryBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderBottomWidth: 1,
   },
-  songInfo: { flex: 1 },
-  songTitle: { fontSize: 16, fontWeight: '500' },
+  rowInfo: { flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  songTitle: { fontSize: 16, fontWeight: '500', flexShrink: 1 },
   songArtist: { fontSize: 14, marginTop: 2 },
-  keyBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  starBtn: { paddingHorizontal: 8, paddingVertical: 4 },
+  starIcon: { fontSize: 22 },
+  keyBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginLeft: 4 },
   keyText: { fontSize: 13, fontWeight: 'bold' },
-  empty: { fontSize: 14, fontStyle: 'italic', textAlign: 'center', paddingVertical: 24 },
+  chevron: { fontSize: 24, fontWeight: '300', marginLeft: 8 },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  backArrow: { fontSize: 22, fontWeight: '600', marginRight: 4, lineHeight: 24 },
+  backText: { fontSize: 14, fontWeight: '600' },
+  backArtist: { fontSize: 13, maxWidth: 180 },
+  // Boton "Notificar a todos" fijo abajo del listado
+  notifyBar: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
+  },
+  notifyBtn: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  notifyBtnText: { color: '#000', fontSize: 16, fontWeight: 'bold' },
+  // Modal del mensaje
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 16,
+    padding: 20,
+  },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
+  modalSubtitle: { fontSize: 12, marginBottom: 16 },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    minHeight: 72,
+    textAlignVertical: 'top',
+  },
+  modalCounter: { fontSize: 11, textAlign: 'right', marginTop: 4 },
+  modalActions: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
 });

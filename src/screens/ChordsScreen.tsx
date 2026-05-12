@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useTheme } from '../theme/ThemeProvider';
 import { chordsApi } from '../services/chords.api';
-import { ChordDiagram } from '../components/ChordDiagram';
+import { ChordViewer } from '../components/ChordViewer';
 import { Chord } from '../types/chord';
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -80,10 +80,7 @@ export function ChordsScreen() {
               <Text style={[styles.modalTitle, { color: theme.colors.primary }]}>
                 {selected.name}
               </Text>
-              <ChordDiagram chord={selected} />
-              <Text style={[styles.difficulty, { color: theme.colors.textSecondary }]}>
-                Dificultad: {selected.difficulty}
-              </Text>
+              <ChordViewer chord={selected} />
               <Pressable
                 onPress={() => setSelected(null)}
                 style={[styles.closeBtn, { backgroundColor: theme.colors.surfaceAlt }]}
@@ -123,8 +120,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modal: {
-    width: 260,
-    padding: 24,
+    width: 320,
+    padding: 20,
     borderRadius: 16,
     alignItems: 'center',
   },

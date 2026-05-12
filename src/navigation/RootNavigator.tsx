@@ -6,25 +6,39 @@ import { useEffect } from 'react';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SearchResultsScreen } from '../screens/SearchResultsScreen';
 import { SongDetailScreen } from '../screens/SongDetailScreen';
+import { EditSongScreen } from '../screens/EditSongScreen';
 import { ChordsScreen } from '../screens/ChordsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { LoginScreen } from '../screens/LoginScreen';
+import { CreateSongScreen } from '../screens/CreateSongScreen';
 import { useTheme } from '../theme/ThemeProvider';
 import { usePreferences } from '../store/preferences';
+import { useAuth } from '../store/auth';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { TabBarIcon } from '../components/TabBarIcon';
 
+// Stack interno de canciones
 export type SongsStackParamList = {
   Home: undefined;
   SearchResults: { query: string };
   SongDetail: { songId: string; title?: string };
+  EditSong: { songId: string };
 };
 
 export type ChordsStackParamList = {
   ChordsList: undefined;
 };
 
+// Stack root que envuelve todo (para que Login se pueda navegar desde cualquier lado)
+export type RootStackParamList = {
+  MainTabs: undefined;
+  Login: undefined;
+};
+
 const SongsStack = createNativeStackNavigator<SongsStackParamList>();
 const ChordsStack = createNativeStackNavigator<ChordsStackParamList>();
 const Tab = createBottomTabNavigator();
+const RootStack = createNativeStackNavigator<RootStackParamList>();
 
 function SongsStackNavigator() {
   const theme = useTheme();
@@ -39,7 +53,7 @@ function SongsStackNavigator() {
       <SongsStack.Screen
         name="Home"
         component={HomeScreen}
-        options={{ title: 'Letras y Acordes' }}
+        options={{ title: 'Letras y Acordes', headerShown: false }}
       />
       <SongsStack.Screen
         name="SearchResults"
@@ -50,6 +64,11 @@ function SongsStackNavigator() {
         name="SongDetail"
         component={SongDetailScreen}
         options={({ route }) => ({ title: route.params.title ?? 'Canción' })}
+      />
+      <SongsStack.Screen
+        name="EditSong"
+        component={EditSongScreen}
+        options={{ title: 'Editar', headerShown: false }}
       />
     </SongsStack.Navigator>
   );
@@ -68,49 +87,79 @@ function ChordsStackNavigator() {
       <ChordsStack.Screen
         name="ChordsList"
         component={ChordsScreen}
-        options={{ title: 'Acordes' }}
+        options={{ title: 'Acordes', headerShown: false }}
       />
     </ChordsStack.Navigator>
   );
 }
 
+function MainTabs() {
+  const theme = useTheme();
+  // Solo mostrar la pestaña "Crear" si el usuario es admin
+  const isAdmin = useAuth((s) => s.isAuthenticated && s.user?.role === 'admin');
+
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
+        },
+        tabBarActiveTintColor: theme.colors.primary,
+        tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarIcon: ({ color, size }) => (
+          <TabBarIcon name={route.name} color={color} size={size} />
+        ),
+      })}
+    >
+      <Tab.Screen name="Canciones" component={SongsStackNavigator} />
+      <Tab.Screen name="Acordes" component={ChordsStackNavigator} />
+      {isAdmin && (
+        <Tab.Screen name="Crear" component={CreateSongScreen} />
+      )}
+      <Tab.Screen name="Ajustes" component={SettingsScreen} />
+    </Tab.Navigator>
+  );
+}
+
 export function RootNavigator() {
   const theme = useTheme();
-  const hydrate = usePreferences((s) => s.hydrate);
+  const hydratePrefs = usePreferences((s) => s.hydrate);
+  const hydrateAuth = useAuth((s) => s.hydrate);
+
+  // Setup de push notifications (registra el token, suscribe listeners)
+  usePushNotifications();
 
   useEffect(() => {
-    hydrate();
-  }, [hydrate]);
+    hydratePrefs();
+    hydrateAuth();
+  }, [hydratePrefs, hydrateAuth]);
 
   return (
     <NavigationContainer>
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: theme.colors.surface,
-            borderTopColor: theme.colors.border,
-          },
-          tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.textMuted,
-          tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name={route.name} color={color} size={size} />
-          ),
-        })}
+      <RootStack.Navigator
+        screenOptions={{
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerTintColor: theme.colors.textPrimary,
+          contentStyle: { backgroundColor: theme.colors.background },
+        }}
       >
-        <Tab.Screen
-          name="Canciones"
-          component={SongsStackNavigator}
+        <RootStack.Screen
+          name="MainTabs"
+          component={MainTabs}
+          options={{ headerShown: false }}
         />
-        <Tab.Screen
-          name="Acordes"
-          component={ChordsStackNavigator}
+        <RootStack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{
+            title: 'Iniciar sesión',
+            presentation: 'modal',
+            headerShown: false,
+          }}
         />
-        <Tab.Screen
-          name="Ajustes"
-          component={SettingsScreen}
-        />
-      </Tab.Navigator>
+      </RootStack.Navigator>
     </NavigationContainer>
   );
 }
