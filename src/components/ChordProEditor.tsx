@@ -49,27 +49,20 @@ export function ChordProEditor({ value, onChangeText, placeholder }: Props) {
   const [showSectionPicker, setShowSectionPicker] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Validacion: encontrar [X] donde X parece intentar ser acorde pero no es valido.
-  // No marcamos los [Verso] etc. como invalidos porque son secciones legitimas.
-  const { invalidChords, totalChords, totalSections } = useMemo(() => {
+  // Contadores simples: acordes vs secciones. Si el contenido del bracket no es
+  // un acorde valido, lo tratamos siempre como seccion/anotacion (sin warnings
+  // de "invalido", que daban demasiados falsos positivos como [Estribillo], [Final], etc.).
+  // El preview de abajo te muestra como queda renderizado, asi que cualquier typo
+  // se ve enseguida.
+  const { totalChords, totalSections } = useMemo(() => {
     const brackets = findBrackets(value);
-    const invalid: string[] = [];
     let chords = 0;
     let sections = 0;
     for (const b of brackets) {
-      if (b.isChord) {
-        chords++;
-      } else if (b.isSection) {
-        // Heuristica: si parece que el usuario quiso un acorde
-        // (empieza con A-G + tal vez # o b) pero no es valido → flag
-        if (/^[A-G][#b]?\S*$/.test(b.content) && !b.content.includes(' ')) {
-          invalid.push(b.content);
-        } else {
-          sections++;
-        }
-      }
+      if (b.isChord) chords++;
+      else if (b.isSection) sections++;
     }
-    return { invalidChords: invalid, totalChords: chords, totalSections: sections };
+    return { totalChords: chords, totalSections: sections };
   }, [value]);
 
   // Preview: intentamos parsear; si falla, mostramos el error
@@ -161,17 +154,11 @@ export function ChordProEditor({ value, onChangeText, placeholder }: Props) {
         spellCheck={false}
       />
 
-      {/* Estado de validacion */}
+      {/* Contadores */}
       <View style={styles.statusRow}>
         <Text style={[styles.statusText, { color: theme.colors.textMuted }]}>
           {totalChords} acordes · {totalSections} secciones
         </Text>
-        {invalidChords.length > 0 && (
-          <Text style={[styles.statusText, { color: theme.colors.danger }]} numberOfLines={1}>
-            ⚠️ {invalidChords.length} inválido(s): {invalidChords.slice(0, 3).join(', ')}
-            {invalidChords.length > 3 ? '...' : ''}
-          </Text>
-        )}
       </View>
 
       {/* Modal: selector de seccion */}

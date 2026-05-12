@@ -12,6 +12,17 @@ export interface UpdateSongInput {
   status?: 'draft' | 'published';
 }
 
+export interface CreateSongInput {
+  title: string;
+  artist: string;
+  genre?: string;
+  originalKey: string;
+  capo?: number;
+  difficulty?: 'principiante' | 'intermedio' | 'avanzado';
+  sections: SongSection[];
+  status?: 'draft' | 'published';
+}
+
 export const songsApi = {
   search: async (params: { q?: string; genre?: string; page?: number; limit?: number }) => {
     const { data } = await api.get<SearchResponse>('/songs/search', { params });
@@ -44,6 +55,11 @@ export const songsApi = {
   },
 
   // Admin
+  create: async (input: CreateSongInput) => {
+    const { data } = await api.post<Song>('/songs', input);
+    return data;
+  },
+
   update: async (id: string, input: UpdateSongInput) => {
     const { data } = await api.put<Song>(`/songs/${id}`, input);
     return data;
