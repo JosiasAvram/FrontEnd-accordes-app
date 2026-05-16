@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useQuery } from '@tanstack/react-query';
+import { Swipeable } from 'react-native-gesture-handler';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { useTheme } from '../theme/ThemeProvider';
@@ -25,9 +26,10 @@ import {
   useDismissNotification,
   useSendNotification,
 } from '../hooks/useListState';
+import { useAuth } from '../store/auth';
 import { NewBadge } from '../components/NewBadge';
 import { SongsStackParamList } from '../navigation/RootNavigator';
-import { SongSummary } from '../types/song';
+import { SongSummary, SearchResponse } from '../types/song';
 
 type Props = NativeStackScreenProps<SongsStackParamList, 'Home'>;
 
@@ -462,10 +464,90 @@ function SongRow({ song, onPress }: { song: SongSummary; onPress: () => void }) 
   const toggleList = useToggleList();
   const inList = !!song.inList;
 
-  return (
+  // Solo los admin pueden eliminar canciones → solo a ellos les habilitamos
+  // el swipe-to-delete.
+  const isAdmin = useAuth((s) => s.isAuthenticated && s.user?.role === 'admin');
+  const queryClient = useQueryClient();
+  const swipeableRef = useRef<Swipeable>(null);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => songsApi.remove(id),
+    // Optimistic update: sacar la cancion de las queries de listado al instante
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['songs-list'] });
+      const prevQueries = queryClient.getQueriesData<SearchResponse>({
+        queryKey: ['songs-list'],
+      });
+      queryClient.setQueriesData<SearchResponse>(
+        { queryKey: ['songs-list'] },
+        (old) => {
+          if (!old?.data) return old;
+          return {
+            ...old,
+            data: old.data.filter((s) => s._id !== id),
+            total: Math.max(0, (old.total ?? 0) - 1),
+          };
+        },
+      );
+      return { prevQueries };
+    },
+    onError: (_err, _id, context) => {
+      // Rollback en caso de error
+      context?.prevQueries?.forEach(([key, data]) => {
+        queryClient.setQueryData(key, data);
+      });
+      Alert.alert(
+        'Error',
+        'No se pudo eliminar la canción. Intentá de nuevo.',
+      );
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['songs-list'] });
+    },
+  });
+
+  const askToDelete = () => {
+    Alert.alert(
+      'Eliminar canción',
+      `¿Estás seguro de eliminar "${song.title}" de "${song.artist}"? Esta acción no se puede deshacer.`,
+      [
+        {
+          text: 'No',
+          style: 'cancel',
+          // Cerrar el swipe si el usuario cancela
+          onPress: () => swipeableRef.current?.close(),
+        },
+        {
+          text: 'Sí, eliminar',
+          style: 'destructive',
+          onPress: () => {
+            swipeableRef.current?.close();
+            deleteMutation.mutate(song._id);
+          },
+        },
+      ],
+    );
+  };
+
+  const renderRightActions = () => (
+    <Pressable
+      onPress={askToDelete}
+      style={[styles.deleteAction, { backgroundColor: theme.colors.danger }]}
+    >
+      <Text style={styles.deleteText}>🗑 Eliminar</Text>
+    </Pressable>
+  );
+
+  const rowContent = (
     <Pressable
       onPress={onPress}
-      style={[styles.row, { borderBottomColor: theme.colors.border }]}
+      style={[
+        styles.row,
+        {
+          borderBottomColor: theme.colors.border,
+          backgroundColor: theme.colors.background,
+        },
+      ]}
     >
       <View style={styles.rowInfo}>
         <View style={styles.titleRow}>
@@ -504,6 +586,21 @@ function SongRow({ song, onPress }: { song: SongSummary; onPress: () => void }) 
         </Text>
       </View>
     </Pressable>
+  );
+
+  // Para no-admin: simple Pressable sin swipe
+  if (!isAdmin) return rowContent;
+
+  // Para admin: Swipeable con accion "Eliminar" a la derecha
+  return (
+    <Swipeable
+      ref={swipeableRef}
+      renderRightActions={renderRightActions}
+      overshootRight={false}
+      rightThreshold={40}
+    >
+      {rowContent}
+    </Swipeable>
   );
 }
 
@@ -565,6 +662,14 @@ const styles = StyleSheet.create({
   keyBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginLeft: 4 },
   keyText: { fontSize: 13, fontWeight: 'bold' },
   chevron: { fontSize: 24, fontWeight: '300', marginLeft: 8 },
+  // Accion "Eliminar" que aparece al deslizar a la izquierda
+  deleteAction: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 100,
+    height: '100%',
+  },
+  deleteText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
   backRow: {
     flexDirection: 'row',
     alignItems: 'center',
