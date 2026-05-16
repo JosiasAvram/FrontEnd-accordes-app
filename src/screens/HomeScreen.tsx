@@ -27,6 +27,7 @@ import {
   useSendNotification,
 } from '../hooks/useListState';
 import { useAuth } from '../store/auth';
+import { useNotificationActions } from '../store/notificationActions';
 import { NewBadge } from '../components/NewBadge';
 import { Toast } from '../components/Toast';
 import { SongsStackParamList } from '../navigation/RootNavigator';
@@ -75,6 +76,22 @@ export function HomeScreen({ navigation }: Props) {
   useEffect(() => {
     setSelectedArtist(null);
   }, [sort, debouncedQuery]);
+
+  // ── Reaccionar a notificaciones tocadas ──────────────
+  // Cuando el usuario toca una notificacion push, usePushNotifications setea
+  // pendingAction = 'open-list'. Aca lo consumimos y aplicamos el filtro.
+  // Se chequea cada vez que la pantalla recibe foco (sirve para cold start
+  // y para cuando ya estaba en otra pestaña).
+  const pendingAction = useNotificationActions((s) => s.pendingAction);
+  const consumePendingAction = useNotificationActions((s) => s.consume);
+  useEffect(() => {
+    if (pendingAction === 'open-list') {
+      setSort('list');
+      setSelectedArtist(null);
+      setQuery('');
+      consumePendingAction();
+    }
+  }, [pendingAction, consumePendingAction]);
 
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
     queryKey: ['songs-list', debouncedQuery, sort],

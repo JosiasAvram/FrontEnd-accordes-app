@@ -8,6 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
 
 import { notificationsApi } from '../services/notifications.api';
+import { useNotificationActions } from '../store/notificationActions';
+import { navigateToCanciones } from '../navigation/navigationRef';
 
 // Comportamiento del foreground: cuando llega una notificacion estando
 // la app abierta, mostrarla igualmente como banner + sonido + badge.
@@ -167,9 +169,45 @@ export function usePushNotifications() {
   }, [queryClient]);
 }
 
+/**
+ * Maneja una notificacion tocada por el usuario: setea la accion pendiente
+ * "abrir Lista" y navega a la pestaña Canciones. El HomeScreen detecta la
+ * accion y aplica el filtro de Lista.
+ */
+function handleNotificationResponse(
+  response: Notifications.NotificationResponse,
+) {
+  const data = response.notification.request.content.data as
+    | { type?: string }
+    | undefined;
+  if (data?.type === 'list-updated') {
+    // Marcar que hay que abrir el modo Lista. El HomeScreen lo consume al montarse.
+    useNotificationActions.getState().setPendingAction('open-list');
+    // Navegar a la pestaña Canciones (sale de cualquier tab donde este el user).
+    // Hay un delay porque navigationRef puede no estar ready inmediatamente.
+    setTimeout(() => {
+      navigateToCanciones();
+    }, 100);
+  }
+}
+
 function setupNotificationListener(queryClient: QueryClient) {
+  // 1) Notification received (app en foreground): refrescar las queries
   Notifications.addNotificationReceivedListener(() => {
     queryClient.invalidateQueries({ queryKey: ['songs-list'] });
     queryClient.invalidateQueries({ queryKey: ['list-state'] });
   });
+
+  // 2) Notification tapped (app en background o foreground): redirigir a Lista
+  Notifications.addNotificationResponseReceivedListener((response) => {
+    handleNotificationResponse(response);
+  });
+
+  // 3) Cold start: si la app se ABRIO desde una notificacion (estaba cerrada),
+  // chequeamos la "ultima notification response" y la procesamos.
+  Notifications.getLastNotificationResponseAsync()
+    .then((response) => {
+      if (response) handleNotificationResponse(response);
+    })
+    .catch((err) => console.warn('[push] getLastNotificationResponse error:', err));
 }

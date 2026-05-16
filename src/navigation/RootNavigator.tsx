@@ -3,6 +3,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 
+import { navigationRef } from './navigationRef';
+
 import { HomeScreen } from '../screens/HomeScreen';
 import { SearchResultsScreen } from '../screens/SearchResultsScreen';
 import { SongDetailScreen } from '../screens/SongDetailScreen';
@@ -137,7 +139,7 @@ export function RootNavigator() {
   }, [hydratePrefs, hydrateAuth]);
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <RootStack.Navigator
         screenOptions={{
           headerStyle: { backgroundColor: theme.colors.background },
