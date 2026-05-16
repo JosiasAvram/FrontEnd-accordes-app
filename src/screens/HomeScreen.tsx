@@ -28,8 +28,14 @@ import {
 } from '../hooks/useListState';
 import { useAuth } from '../store/auth';
 import { NewBadge } from '../components/NewBadge';
+import { Toast } from '../components/Toast';
 import { SongsStackParamList } from '../navigation/RootNavigator';
 import { SongSummary, SearchResponse } from '../types/song';
+
+// Duracion del toast de "Eliminada · Deshacer" antes de que el delete se
+// confirme contra el backend.
+const UNDO_WINDOW_MS = 5000;
+const TICK_MS = 100;
 
 type Props = NativeStackScreenProps<SongsStackParamList, 'Home'>;
 
@@ -56,6 +62,8 @@ function useDebounce<T>(value: T, delay = 300): T {
 
 export function HomeScreen({ navigation }: Props) {
   const theme = useTheme();
+  const queryClient = useQueryClient();
+  const isAdmin = useAuth((s) => s.isAuthenticated && s.user?.role === 'admin');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortOption>('title');
   // Cuando estamos en modo "artist" y el usuario elige un artista,
@@ -185,6 +193,104 @@ export function HomeScreen({ navigation }: Props) {
       },
     });
   };
+
+  // ── Borrado con undo (toast) ──────────────────────────
+  // Cuando el admin confirma "eliminar", removemos la cancion del cache
+  // optimisticamente, mostramos un toast, y esperamos UNDO_WINDOW_MS antes de
+  // mandar el DELETE real al backend. Si toca "Deshacer" en ese rango, lo cancelamos.
+  interface PendingDelete {
+    song: SongSummary;
+    snapshot: Array<[unknown, SearchResponse | undefined]>;
+    remainingMs: number;
+  }
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const pendingDeleteRef = useRef<PendingDelete | null>(null);
+  const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Mantenemos la ref sincronizada con el state para acceder al ultimo valor desde callbacks
+  useEffect(() => {
+    pendingDeleteRef.current = pendingDelete;
+  }, [pendingDelete]);
+
+  const finalizeDelete = (id: string) => {
+    // Llamada real al backend (DELETE /songs/:id)
+    songsApi.remove(id).catch((err) => {
+      console.warn('[delete] error al eliminar en backend:', err);
+      // Si falla, refrescamos para que vuelva a aparecer
+      queryClient.invalidateQueries({ queryKey: ['songs-list'] });
+    });
+    // Limpiar todo el estado pendiente
+    clearTicker();
+    setPendingDelete(null);
+  };
+
+  const clearTicker = () => {
+    if (tickIntervalRef.current) {
+      clearInterval(tickIntervalRef.current);
+      tickIntervalRef.current = null;
+    }
+  };
+
+  const undoDelete = () => {
+    const current = pendingDeleteRef.current;
+    if (!current) return;
+    // Restaurar el snapshot del cache → la cancion vuelve a aparecer
+    current.snapshot.forEach(([key, dataSnap]) => {
+      queryClient.setQueryData(key as unknown as readonly unknown[], dataSnap);
+    });
+    clearTicker();
+    setPendingDelete(null);
+  };
+
+  const requestDelete = (song: SongSummary) => {
+    // Si hay otro delete pendiente, lo finalizamos ya mismo (el usuario eligio
+    // empezar otro). Asi no nos quedamos con timers cruzados.
+    if (pendingDeleteRef.current) {
+      finalizeDelete(pendingDeleteRef.current.song._id);
+    }
+
+    // Snapshot del cache actual para poder restaurar si toca "Deshacer"
+    const snapshot = queryClient.getQueriesData<SearchResponse>({
+      queryKey: ['songs-list'],
+    }) as Array<[unknown, SearchResponse | undefined]>;
+
+    // Optimistic remove: sacar la cancion del cache
+    queryClient.setQueriesData<SearchResponse>(
+      { queryKey: ['songs-list'] },
+      (old) => {
+        if (!old?.data) return old;
+        return {
+          ...old,
+          data: old.data.filter((s) => s._id !== song._id),
+          total: Math.max(0, (old.total ?? 0) - 1),
+        };
+      },
+    );
+
+    setPendingDelete({ song, snapshot, remainingMs: UNDO_WINDOW_MS });
+
+    // Tick del countdown — cada 100ms decrementa remainingMs
+    clearTicker();
+    tickIntervalRef.current = setInterval(() => {
+      const current = pendingDeleteRef.current;
+      if (!current) {
+        clearTicker();
+        return;
+      }
+      const next = current.remainingMs - TICK_MS;
+      if (next <= 0) {
+        // Tiempo agotado → finalizar (DELETE al backend)
+        finalizeDelete(current.song._id);
+      } else {
+        setPendingDelete({ ...current, remainingMs: next });
+      }
+    }, TICK_MS);
+  };
+
+  // Limpieza al desmontar
+  useEffect(() => {
+    return () => clearTicker();
+  }, []);
 
   return (
     <SafeAreaView edges={['top']} style={[styles.flex, { backgroundColor: theme.colors.background }]}>
@@ -343,6 +449,8 @@ export function HomeScreen({ navigation }: Props) {
           renderItem={({ item }) => (
             <SongRow
               song={item}
+              canDelete={isAdmin}
+              onRequestDelete={requestDelete}
               onPress={() =>
                 navigation.navigate('SongDetail', {
                   songId: item._id,
@@ -455,66 +563,47 @@ export function HomeScreen({ navigation }: Props) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Toast de "Eliminada · Deshacer" */}
+      <Toast
+        visible={!!pendingDelete}
+        message={
+          pendingDelete
+            ? `🗑 "${pendingDelete.song.title}" eliminada`
+            : ''
+        }
+        actionLabel="Deshacer"
+        onAction={undoDelete}
+        remainingMs={pendingDelete?.remainingMs}
+      />
     </SafeAreaView>
   );
 }
 
-function SongRow({ song, onPress }: { song: SongSummary; onPress: () => void }) {
+function SongRow({
+  song,
+  onPress,
+  onRequestDelete,
+  canDelete,
+}: {
+  song: SongSummary;
+  onPress: () => void;
+  onRequestDelete?: (song: SongSummary) => void;
+  canDelete: boolean;
+}) {
   const theme = useTheme();
   const toggleList = useToggleList();
   const inList = !!song.inList;
-
-  // Solo los admin pueden eliminar canciones → solo a ellos les habilitamos
-  // el swipe-to-delete.
-  const isAdmin = useAuth((s) => s.isAuthenticated && s.user?.role === 'admin');
-  const queryClient = useQueryClient();
   const swipeableRef = useRef<Swipeable>(null);
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => songsApi.remove(id),
-    // Optimistic update: sacar la cancion de las queries de listado al instante
-    onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: ['songs-list'] });
-      const prevQueries = queryClient.getQueriesData<SearchResponse>({
-        queryKey: ['songs-list'],
-      });
-      queryClient.setQueriesData<SearchResponse>(
-        { queryKey: ['songs-list'] },
-        (old) => {
-          if (!old?.data) return old;
-          return {
-            ...old,
-            data: old.data.filter((s) => s._id !== id),
-            total: Math.max(0, (old.total ?? 0) - 1),
-          };
-        },
-      );
-      return { prevQueries };
-    },
-    onError: (_err, _id, context) => {
-      // Rollback en caso de error
-      context?.prevQueries?.forEach(([key, data]) => {
-        queryClient.setQueryData(key, data);
-      });
-      Alert.alert(
-        'Error',
-        'No se pudo eliminar la canción. Intentá de nuevo.',
-      );
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['songs-list'] });
-    },
-  });
 
   const askToDelete = () => {
     Alert.alert(
       'Eliminar canción',
-      `¿Estás seguro de eliminar "${song.title}" de "${song.artist}"? Esta acción no se puede deshacer.`,
+      `¿Estás seguro de eliminar "${song.title}" de "${song.artist}"? Vas a tener 5 segundos para deshacerlo.`,
       [
         {
           text: 'No',
           style: 'cancel',
-          // Cerrar el swipe si el usuario cancela
           onPress: () => swipeableRef.current?.close(),
         },
         {
@@ -522,7 +611,7 @@ function SongRow({ song, onPress }: { song: SongSummary; onPress: () => void }) 
           style: 'destructive',
           onPress: () => {
             swipeableRef.current?.close();
-            deleteMutation.mutate(song._id);
+            onRequestDelete?.(song);
           },
         },
       ],
@@ -588,10 +677,10 @@ function SongRow({ song, onPress }: { song: SongSummary; onPress: () => void }) 
     </Pressable>
   );
 
-  // Para no-admin: simple Pressable sin swipe
-  if (!isAdmin) return rowContent;
+  // Sin admin → sin swipe; render directo
+  if (!canDelete) return rowContent;
 
-  // Para admin: Swipeable con accion "Eliminar" a la derecha
+  // Admin → Swipeable con accion "Eliminar" a la derecha
   return (
     <Swipeable
       ref={swipeableRef}
