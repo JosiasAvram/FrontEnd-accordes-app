@@ -141,6 +141,45 @@ const HEADER_REGEX = /^(Title|Artist|Key|Capo|Difficulty|Genre)\s*:\s*(.+)$/i;
 const SECTION_REGEX = /^\s*\[([^\]]+)\]\s*$/;
 
 /**
+ * Cuando una linea es "solo acordes" (sin letra, solo espacios y [chords])
+ * Y la siguiente es una linea de letra pura, las fusionamos en una unica
+ * SongLine paired (text=lyric, chords=positions). Esto resuelve el problema
+ * visual donde las brackets [] ocupan espacio en el editor pero no en el
+ * viewer: al pasar a formato inline `[C]letra`, ya no hay desalineacion.
+ *
+ * Se aplica DENTRO de cada seccion. Lineas con inlineSegments seguidas de
+ * letra → se mergea. Lineas solo-acordes sin letra siguiente (intros, solos)
+ * → quedan tal cual.
+ */
+function pairChordOnlyWithLyric(lines: SongLine[]): SongLine[] {
+  const result: SongLine[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const cur = lines[i];
+    const next = lines[i + 1];
+    // cur es "chord-only" si tiene chords pero su texto cleaned es solo whitespace
+    const curIsChordOnly =
+      !!cur.chords && cur.chords.length > 0 && cur.text.trim() === '';
+    // next es "puro texto" si tiene letra y NO tiene chords inline
+    const nextIsPureText =
+      !!next && (!next.chords || next.chords.length === 0) && next.text.trim() !== '';
+
+    if (curIsChordOnly && nextIsPureText) {
+      // Mergear: chords del primer line van al texto del segundo
+      result.push({
+        text: next.text,
+        chords: cur.chords.map((c) => ({ ...c })),
+      });
+      i += 2; // saltamos los dos
+      continue;
+    }
+    result.push(cur);
+    i += 1;
+  }
+  return result;
+}
+
+/**
  * Parser principal: ChordPro text → ParsedSong.
  * Tira Error si faltan campos obligatorios (Title, Artist).
  */
@@ -191,6 +230,8 @@ export function chordProToSong(input: string): ParsedSong {
     const sectionMatch = line.match(SECTION_REGEX);
     if (sectionMatch && !isValidChord(sectionMatch[1])) {
       if (currentSection.lines.length > 0) {
+        // Mergear chord-only + lyric antes de cerrar la seccion
+        currentSection.lines = pairChordOnlyWithLyric(currentSection.lines);
         sections.push(currentSection);
       }
       currentSection = {
@@ -206,6 +247,7 @@ export function chordProToSong(input: string): ParsedSong {
   }
 
   if (currentSection.lines.length > 0) {
+    currentSection.lines = pairChordOnlyWithLyric(currentSection.lines);
     sections.push(currentSection);
   }
 

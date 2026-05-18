@@ -30,6 +30,7 @@ import { useAuth } from '../store/auth';
 import { useNotificationActions } from '../store/notificationActions';
 import { NewBadge } from '../components/NewBadge';
 import { Toast } from '../components/Toast';
+import { filterSongs } from '../utils/search';
 import { SongsStackParamList } from '../navigation/RootNavigator';
 import { SongSummary, SearchResponse } from '../types/song';
 
@@ -93,41 +94,43 @@ export function HomeScreen({ navigation }: Props) {
     }
   }, [pendingAction, consumePendingAction]);
 
+  // Trae TODAS las canciones una vez (sin pasar el query al server).
+  // La busqueda se hace en el cliente con filterSongs() — mas rapido, mas flexible.
   const { data, isLoading, isFetching, isError, error, refetch } = useQuery({
-    queryKey: ['songs-list', debouncedQuery, sort],
-    queryFn: async () => {
-      // Si hay query, usa el endpoint de búsqueda; si no, lista todas
-      if (debouncedQuery.trim()) {
-        return songsApi.search({ q: debouncedQuery, limit: 200 });
-      }
-      return songsApi.list({ limit: 200 });
-    },
+    queryKey: ['songs-list'],
+    queryFn: () => songsApi.list({ limit: 500 }),
     retry: 2,
   });
 
-  // Ordenamiento + filtrado client-side
+  // Ordenamiento + filtrado client-side (con busqueda fuzzy + prefijo)
   const sortedSongs = useMemo(() => {
     if (!data?.data) return [];
-    let arr = [...data.data];
+    let arr: SongSummary[] = [...data.data];
 
+    // 1. Filtro de texto (busqueda fuzzy/prefijo si hay query)
+    if (debouncedQuery.trim()) {
+      arr = filterSongs(arr, debouncedQuery);
+    }
+
+    // 2. Filtro de modo (Lista, Artista seleccionado)
     if (sort === 'list') {
       arr = arr.filter((s) => s.inList);
       arr.sort((a, b) =>
         a.title.localeCompare(b.title, 'es', { sensitivity: 'base' }),
       );
     } else if (sort === 'artist' && selectedArtist) {
-      // Mostrar solo las canciones del artista seleccionado, ordenadas A-Z
       arr = arr.filter((s) => s.artist === selectedArtist);
       arr.sort((a, b) =>
         a.title.localeCompare(b.title, 'es', { sensitivity: 'base' }),
       );
-    } else if (sort === 'title') {
+    } else if (sort === 'title' && !debouncedQuery.trim()) {
+      // Solo ordenar A-Z si no hay query (con query, mantenemos el orden por relevancia)
       arr.sort((a, b) =>
         a.title.localeCompare(b.title, 'es', { sensitivity: 'base' }),
       );
     }
     return arr;
-  }, [data, sort, selectedArtist]);
+  }, [data, sort, selectedArtist, debouncedQuery]);
 
   // Lista de artistas con su contador de canciones (solo se computa en modo artist sin artista seleccionado)
   const artistGroups = useMemo<ArtistGroup[]>(() => {

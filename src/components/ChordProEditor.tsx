@@ -11,6 +11,7 @@ import {
   NativeSyntheticEvent,
   TextInputSelectionChangeEventData,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '../theme/ThemeProvider';
 import {
@@ -205,7 +206,10 @@ export function ChordProEditor({ value, onChangeText, placeholder }: Props) {
         animationType="slide"
         onRequestClose={() => setShowPreview(false)}
       >
-        <View style={[styles.previewContainer, { backgroundColor: theme.colors.background }]}>
+        <SafeAreaView
+          edges={['top']}
+          style={[styles.previewContainer, { backgroundColor: theme.colors.background }]}
+        >
           <View style={[styles.previewHeader, { borderBottomColor: theme.colors.border }]}>
             <Pressable onPress={() => setShowPreview(false)} hitSlop={12}>
               <Text style={[styles.previewClose, { color: theme.colors.primary }]}>
@@ -258,7 +262,7 @@ export function ChordProEditor({ value, onChangeText, placeholder }: Props) {
               </View>
             )}
           </ScrollView>
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   );
