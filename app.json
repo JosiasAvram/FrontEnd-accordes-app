@@ -2,7 +2,7 @@
   "expo": {
     "name": "Letras y Acordes",
     "slug": "letras-y-acordes",
-    "version": "4.8.0",
+    "version": "4.8.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "icon": "./assets/icon.png",
@@ -17,11 +17,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.josi.letrasyacordes",
-      "buildNumber": "16"
+      "buildNumber": "17"
     },
     "android": {
       "package": "com.josi.letrasyacordes",
-      "versionCode": 16,
+      "versionCode": 17,
       "softwareKeyboardLayoutMode": "pan",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {

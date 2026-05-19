@@ -30,7 +30,7 @@ import { useAuth } from '../store/auth';
 import { useNotificationActions } from '../store/notificationActions';
 import { NewBadge } from '../components/NewBadge';
 import { Toast } from '../components/Toast';
-import { filterSongs } from '../utils/search';
+import { filterSongs, SearchScope } from '../utils/search';
 import { SongsStackParamList } from '../navigation/RootNavigator';
 import { SongSummary, SearchResponse } from '../types/song';
 
@@ -78,6 +78,11 @@ export function HomeScreen({ navigation }: Props) {
     setSelectedArtist(null);
   }, [sort, debouncedQuery]);
 
+  // Limpiar el query al cambiar de modo (Lista oculta el buscador, etc.)
+  useEffect(() => {
+    setQuery('');
+  }, [sort]);
+
   // ── Reaccionar a notificaciones tocadas ──────────────
   // Cuando el usuario toca una notificacion push, usePushNotifications setea
   // pendingAction = 'open-list'. Aca lo consumimos y aplicamos el filtro.
@@ -102,17 +107,34 @@ export function HomeScreen({ navigation }: Props) {
     retry: 2,
   });
 
-  // Ordenamiento + filtrado client-side (con busqueda fuzzy + prefijo)
+  // Scope del buscador segun el modo activo:
+  //   A-Z      → 'title'  (busca solo titulos)
+  //   Artista  → 'artist' (busca solo artistas, en la lista de artistas)
+  //   Artista (con artista seleccionado) → 'title' (busca titulos dentro del artista)
+  //   Lista    → no aplica (buscador oculto)
+  const searchScope: SearchScope =
+    sort === 'artist' && !selectedArtist ? 'artist' : 'title';
+
+  // El buscador no se muestra en modo Lista
+  const showSearchBar = sort !== 'list';
+
+  // Placeholder dinamico segun scope
+  const searchPlaceholder =
+    searchScope === 'artist'
+      ? 'Buscar artista...'
+      : 'Buscar canción...';
+
+  // Ordenamiento + filtrado client-side
   const sortedSongs = useMemo(() => {
     if (!data?.data) return [];
     let arr: SongSummary[] = [...data.data];
 
-    // 1. Filtro de texto (busqueda fuzzy/prefijo si hay query)
-    if (debouncedQuery.trim()) {
-      arr = filterSongs(arr, debouncedQuery);
+    // 1. Filtro de texto (solo si hay query y el buscador esta visible)
+    if (showSearchBar && debouncedQuery.trim()) {
+      arr = filterSongs(arr, debouncedQuery, searchScope);
     }
 
-    // 2. Filtro de modo (Lista, Artista seleccionado)
+    // 2. Filtro/orden de modo (Lista, Artista seleccionado, A-Z)
     if (sort === 'list') {
       arr = arr.filter((s) => s.inList);
       arr.sort((a, b) =>
@@ -130,13 +152,21 @@ export function HomeScreen({ navigation }: Props) {
       );
     }
     return arr;
-  }, [data, sort, selectedArtist, debouncedQuery]);
+  }, [data, sort, selectedArtist, debouncedQuery, searchScope, showSearchBar]);
 
-  // Lista de artistas con su contador de canciones (solo se computa en modo artist sin artista seleccionado)
+  // Lista de artistas con su contador de canciones (solo en modo artist sin artista seleccionado)
+  // Aplica el filtro de busqueda si hay query (scope='artist')
   const artistGroups = useMemo<ArtistGroup[]>(() => {
     if (!data?.data || sort !== 'artist' || selectedArtist) return [];
+
+    // Si hay query, filtrar las canciones por artista primero
+    let songsForGrouping = data.data;
+    if (debouncedQuery.trim()) {
+      songsForGrouping = filterSongs(data.data, debouncedQuery, 'artist');
+    }
+
     const counts = new Map<string, number>();
-    for (const song of data.data) {
+    for (const song of songsForGrouping) {
       counts.set(song.artist, (counts.get(song.artist) ?? 0) + 1);
     }
     const groups: ArtistGroup[] = Array.from(counts.entries()).map(
@@ -146,7 +176,7 @@ export function HomeScreen({ navigation }: Props) {
       a.artist.localeCompare(b.artist, 'es', { sensitivity: 'base' }),
     );
     return groups;
-  }, [data, sort, selectedArtist]);
+  }, [data, sort, selectedArtist, debouncedQuery]);
 
   const sortOptions: Array<{ key: SortOption; label: string }> = [
     { key: 'title', label: 'A-Z' },
@@ -319,24 +349,26 @@ export function HomeScreen({ navigation }: Props) {
           Letras y Acordes
         </Text>
 
-        {/* Búsqueda live (con debounce de 300ms) */}
-        <View style={[styles.searchWrap, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
-          <Text style={[styles.searchIcon, { color: theme.colors.textMuted }]}>🔍</Text>
-          <TextInput
-            style={[styles.searchInput, { color: theme.colors.textPrimary }]}
-            placeholder="Buscar artista o canción..."
-            placeholderTextColor={theme.colors.textMuted}
-            value={query}
-            onChangeText={setQuery}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {query.length > 0 && (
-            <Pressable onPress={() => setQuery('')}>
-              <Text style={[styles.searchClear, { color: theme.colors.textMuted }]}>✕</Text>
-            </Pressable>
-          )}
-        </View>
+        {/* Búsqueda live — solo se muestra cuando aplica (no en Lista) */}
+        {showSearchBar && (
+          <View style={[styles.searchWrap, { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}>
+            <Text style={[styles.searchIcon, { color: theme.colors.textMuted }]}>🔍</Text>
+            <TextInput
+              style={[styles.searchInput, { color: theme.colors.textPrimary }]}
+              placeholder={searchPlaceholder}
+              placeholderTextColor={theme.colors.textMuted}
+              value={query}
+              onChangeText={setQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {query.length > 0 && (
+              <Pressable onPress={() => setQuery('')}>
+                <Text style={[styles.searchClear, { color: theme.colors.textMuted }]}>✕</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
 
         {/* Botones de orden + contador */}
         <View style={styles.sortRow}>

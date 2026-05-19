@@ -118,14 +118,57 @@ interface Scored<T> {
 }
 
 /**
- * Filtra y ordena las canciones segun el query del usuario.
+ * Scope de busqueda:
+ *  - 'title' → solo busca en el titulo de la cancion
+ *  - 'artist' → solo busca en el nombre del artista
+ *  - 'both' → busca en ambos (default historico)
+ */
+export type SearchScope = 'title' | 'artist' | 'both';
+
+/**
+ * Aplica la logica de matching de "1 palabra → busca contenido con typos" vs
+ * "2+ palabras → prefijo estricto" sobre un texto target (titulo o artista).
+ */
+function matchesText(
+  tokens: string[],
+  text: string,
+): number | null {
+  const textNorm = normalize(text);
+
+  if (tokens.length === 1) {
+    // 1 palabra: matchea en cualquier parte del texto (tolerancia a typos)
+    return singleTokenMatch(tokens[0], textNorm);
+  }
+
+  // 2+ palabras: el texto debe EMPEZAR con la secuencia
+  const textTokens = textNorm.split(/\s+/);
+  let totalScore = 0;
+  for (let i = 0; i < tokens.length; i++) {
+    const queryToken = tokens[i];
+    const textToken = textTokens[i];
+    if (!textToken) return null;
+    const score = wordPrefixMatch(queryToken, textToken);
+    if (score === null) return null;
+    totalScore += score;
+  }
+  return totalScore;
+}
+
+/**
+ * Filtra y ordena las canciones segun el query del usuario y el scope.
  * - Si no hay query → devuelve todas (sin cambios)
- * - Si 1 token → busca en titulo/artista con typo tolerance
- * - Si 2+ tokens → el TITULO debe empezar con esa secuencia (prefijo estricto)
+ * - scope='title' → busca solo en title
+ * - scope='artist' → busca solo en artist
+ * - scope='both' → busca en ambos, con title como prioridad
+ *
+ * Reglas de matching:
+ *  - 1 palabra → buscar en el campo target con tolerancia a typos
+ *  - 2+ palabras → el campo target debe EMPEZAR con esa secuencia
  */
 export function filterSongs<T extends SearchableSong>(
   songs: T[],
   query: string,
+  scope: SearchScope = 'both',
 ): T[] {
   const q = normalize(query);
   if (!q) return songs;
@@ -135,55 +178,29 @@ export function filterSongs<T extends SearchableSong>(
 
   const scored: Array<Scored<T>> = [];
 
-  if (tokens.length === 1) {
-    // ── 1 palabra: buscar en titulo o artista (cualquier parte) ──
-    const queryToken = tokens[0];
-    for (const song of songs) {
-      const titleNorm = normalize(song.title);
-      const artistNorm = normalize(song.artist);
+  for (const song of songs) {
+    let score: number | null = null;
 
-      const titleScore = singleTokenMatch(queryToken, titleNorm);
-      const artistScore = singleTokenMatch(queryToken, artistNorm);
-
-      let score: number | null = null;
+    if (scope === 'title') {
+      score = matchesText(tokens, song.title);
+    } else if (scope === 'artist') {
+      score = matchesText(tokens, song.artist);
+    } else {
+      // 'both' → toma el mejor entre title y artist (title tiene prioridad)
+      const titleScore = matchesText(tokens, song.title);
+      const artistScore = matchesText(tokens, song.artist);
       if (titleScore !== null && artistScore !== null) {
         score = Math.min(titleScore, artistScore + 10);
       } else if (titleScore !== null) {
         score = titleScore;
       } else if (artistScore !== null) {
-        score = artistScore + 10; // artista es secundario
+        score = artistScore + 10;
       }
-
-      if (score !== null) scored.push({ song, score });
     }
-  } else {
-    // ── 2+ palabras: el titulo debe EMPEZAR con la secuencia ──
-    for (const song of songs) {
-      const titleNorm = normalize(song.title);
-      const titleTokens = titleNorm.split(/\s+/);
 
-      let totalScore = 0;
-      let allMatch = true;
-      for (let i = 0; i < tokens.length; i++) {
-        const queryToken = tokens[i];
-        const titleToken = titleTokens[i];
-        if (!titleToken) {
-          allMatch = false;
-          break;
-        }
-        const score = wordPrefixMatch(queryToken, titleToken);
-        if (score === null) {
-          allMatch = false;
-          break;
-        }
-        totalScore += score;
-      }
-
-      if (allMatch) scored.push({ song, score: totalScore });
-    }
+    if (score !== null) scored.push({ song, score });
   }
 
-  // Ordenar por score ascendente (mejor match primero)
   scored.sort((a, b) => a.score - b.score);
   return scored.map((s) => s.song);
 }

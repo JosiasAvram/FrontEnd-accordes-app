@@ -9,7 +9,10 @@
     "web": "expo start --web",
     "test": "jest",
     "lint": "eslint . --ext .ts,.tsx --fix",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "apk:prebuild": "expo prebuild --platform android",
+    "apk:build": "cd android && gradlew.bat assembleRelease",
+    "apk:full": "npm run apk:prebuild && npm run apk:build"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.1.2",
